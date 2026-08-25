@@ -1,306 +1,198 @@
 "use client";
+import { useState } from "react";
 
-import React, { useState, useEffect } from "react";
-
-export default function FamilyChoreCollector() {
-  const [members, setMembers] = useState([
-    { id: 1, name: "Аав", stars: 0 },
-    { id: 2, name: "Ээж", stars: 0 },
-    { id: 3, name: "Хүү", stars: 0 },
-    { id: 4, name: "Дүү", stars: 0 },
+export default function HomeChoreStarsPage() {
+  const [tasks, setTasks] = useState([
+    {
+      id: 2,
+      text: " Шал арчиж, тоос соруулах",
+      stars: 2,
+      done: false,
+      member: "Хүү",
+    },
+    { id: 3, text: " Хог асгах", stars: 1, done: true, member: "Охин" },
   ]);
 
-  const [chores, setChores] = useState([
-    { id: 1, name: "Аяга таваг угаах", reward: 1 },
-    { id: 2, name: "Гэр цэвэрлэх / тоос соруулах", reward: 1 },
-    { id: 3, name: "Хог хаях", reward: 1 },
-    { id: 4, name: "Хувцас угаалгад хийх", reward: 1 },
-    { id: 5, name: "Хоол хийхэд туслах", reward: 1 },
-    { id: 6, name: "Хичээлээ хийх / Ном унших", reward: 1 },
-    { id: 7, name: "Өрөөгөө цэгцлэх", reward: 1 },
-    { id: 8, name: "Хувцсаа хураах", reward: 1 },
-    { id: 9, name: "Угаалгын өрөө цэвэрлэх", reward: 1 },
-    { id: 10, name: "Гутал арчиж цэгцлэх", reward: 1 },
-    { id: 11, name: "Цэцэг услах", reward: 1 },
-    { id: 12, name: "Тоос арчих", reward: 1 },
-  ]);
+  const [newText, setNewText] = useState("");
+  const [newMember, setNewMember] = useState("Аав");
+  const [newStars, setNewStars] = useState(1);
 
-  const [assignments, setAssignments] = useState([]);
-  const [history, setHistory] = useState([]);
+  const addTask = (e) => {
+    e.preventDefault();
+    if (!newText.trim()) return;
 
-  const STAR_VALUE = 1000;
+    const newTask = {
+      id: Date.now(),
+      text: newText,
+      stars: Number(newStars),
+      done: false,
+      member: newMember,
+    };
 
-  // Автомат ажил хуваарилах функц
-  const autoGenerateChores = (currentMembers) => {
-    if (currentMembers.length === 0 || chores.length < 3) return [];
-
-    let newAssignments = [];
-    currentMembers.forEach((member) => {
-      const shuffledChores = [...chores].sort(() => Math.random() - 0.5);
-      const selectedChores = shuffledChores.slice(0, 3);
-
-      selectedChores.forEach((chore, index) => {
-        newAssignments.push({
-          uniqueId: `${member.id}-${index}-${Date.now()}`,
-          memberId: member.id,
-          memberName: member.name,
-          choreName: chore.name,
-          reward: chore.reward,
-          completed: false,
-        });
-      });
-    });
-
-    return newAssignments;
+    setTasks([...tasks, newTask]);
+    setNewText("");
   };
 
-  useEffect(() => {
-    const savedMembers = localStorage.getItem("family_members");
-    const savedHistory = localStorage.getItem("chore_history");
-
-    let activeMembers = savedMembers ? JSON.parse(savedMembers) : members;
-    let activeHistory = savedHistory ? JSON.parse(savedHistory) : [];
-
-    if (savedMembers) setMembers(activeMembers);
-    if (savedHistory) setHistory(activeHistory);
-
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentMonthStr = `${now.getFullYear()}-${now.getMonth() + 1}`;
-
-    const lastDate = localStorage.getItem("last_assignment_date");
-    const lastMonth = localStorage.getItem("last_payout_month");
-    const savedAssignments = localStorage.getItem("current_assignments");
-
-    let needNewAssignments = false;
-
-    if (lastMonth && lastMonth !== currentMonthStr) {
-      const prevDate = new Date();
-      prevDate.setMonth(prevDate.getMonth() - 1);
-      const prevMonthName = prevDate.toLocaleString("mn-MN", { month: "long" });
-
-      let summaryLog = `--- 💰 ${prevMonthName} сарын автомат мөнгөн тооцоо хаагдлаа ---`;
-
-      activeMembers = activeMembers.map((m) => {
-        const payoutAmount = m.stars * STAR_VALUE;
-        summaryLog += `\n💵 ${m.name}: ${m.stars} одон = ${payoutAmount.toLocaleString()} ₮`;
-        return { ...m, stars: 0 };
-      });
-
-      setMembers(activeMembers);
-      localStorage.setItem("family_members", JSON.stringify(activeMembers));
-
-      activeHistory = [summaryLog, ...activeHistory];
-      setHistory(activeHistory);
-      localStorage.setItem("chore_history", JSON.stringify(activeHistory));
-
-      needNewAssignments = true;
-    }
-    localStorage.setItem("last_payout_month", currentMonthStr);
-
-    if (lastDate !== todayStr || needNewAssignments) {
-      const freshAssignments = autoGenerateChores(activeMembers);
-      setAssignments(freshAssignments);
-      localStorage.setItem("last_assignment_date", todayStr);
-      localStorage.setItem(
-        "current_assignments",
-        JSON.stringify(freshAssignments),
-      );
-    } else if (savedAssignments) {
-      setAssignments(JSON.parse(savedAssignments));
-    }
-  }, []);
-
-  const completeChore = (uniqueId) => {
-    const targetIndex = assignments.findIndex(
-      (item) => item.uniqueId === uniqueId,
+  const toggleTask = (id) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === id ? { ...task, done: !task.done } : task,
+      ),
     );
-    if (targetIndex === -1 || assignments[targetIndex].completed) return;
-
-    const updatedAssignments = [...assignments];
-    updatedAssignments[targetIndex].completed = true;
-    setAssignments(updatedAssignments);
-    localStorage.setItem(
-      "current_assignments",
-      JSON.stringify(updatedAssignments),
-    );
-
-    const { choreName, reward, memberName, memberId } =
-      updatedAssignments[targetIndex];
-
-    const updatedMembers = members.map((m) =>
-      m.id === memberId ? { ...m, stars: m.stars + reward } : m,
-    );
-    setMembers(updatedMembers);
-    localStorage.setItem("family_members", JSON.stringify(updatedMembers));
-
-    const logMessage = `[${new Date().toLocaleTimeString()}] ${memberName} "${choreName}" ажлыг хийж, +${reward} одон цуглууллаа! (+${reward * STAR_VALUE} ₮) ⭐`;
-    const updatedHistory = [logMessage, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem("chore_history", JSON.stringify(updatedHistory));
   };
 
-  const getMemberProgress = (memberId) => {
-    const memberTasks = assignments.filter(
-      (item) => item.memberId === memberId,
-    );
-    const completedTasks = memberTasks.filter((item) => item.completed).length;
-    return `${completedTasks} / ${memberTasks.length}`;
-  };
+  const members = ["Хүү", "Охин"];
+  const leaderboard = members
+    .map((member) => {
+      const totalStars = tasks
+        .filter((t) => t.member === member && t.done)
+        .reduce((sum, t) => sum + t.stars, 0);
+      return { name: member, stars: totalStars };
+    })
+    .sort((a, b) => b.stars - a.stars);
 
   return (
-    <div
-      style={{
-        maxWidth: "800px",
-        margin: "0 auto",
-        padding: "20px",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <h1 style={{ textAlign: "center", color: "#333" }}>
-        ⭐ Гэр Бүлийн Автомат Ажил Хуваарилалт ⭐
-      </h1>
+    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black text-slate-900 flex items-center justify-center gap-2">
+            ✨ Одон Цуглуулах Самбар
+          </h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Ажлаа амжилттай дуусгаад гэр бүлээ оддоор чимээрэй!
+          </p>
+        </div>
 
-      <div
-        style={{
-          background: "#f0f4f8",
-          padding: "15px",
-          borderRadius: "8px",
-          marginBottom: "20px",
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>
-          🏆 Энэ сарын хуримтлал (1 Одон = {STAR_VALUE.toLocaleString()} ₮)
-        </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          {members.map((m) => (
-            <div
-              key={m.id}
-              style={{
-                background: "#fff",
-                padding: "10px",
-                borderRadius: "5px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                textAlign: "center",
-              }}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <form
+              onSubmit={addTask}
+              className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3"
             >
-              <strong style={{ fontSize: "16px" }}>{m.name}</strong>
-              <div style={{ fontSize: "13px", color: "#555", margin: "3px 0" }}>
-                📅 Өнөөдрийн явц: <strong>{getMemberProgress(m.id)}</strong>
+              <div className="text-sm font-bold text-slate-700">
+                ➕ Шинэ ажил одоор үнэлж нэмэх
               </div>
-              <div
-                style={{ fontSize: "18px", color: "#ffa500", margin: "5px 0" }}
-              >
-                {"⭐".repeat(Math.max(0, Math.min(m.stars, 5)))} {m.stars} одон
-              </div>
-              <div
-                style={{
-                  fontSize: "16px",
-                  color: "#2e7d32",
-                  fontWeight: "bold",
-                }}
-              >
-                💰 {(m.stars * STAR_VALUE).toLocaleString()} ₮
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {assignments.length > 0 && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>📅 Өнөөдрийн Хийх Ажлууд</h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {assignments.map((item) => (
-              <li
-                key={item.uniqueId}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "10px 0",
-                  borderBottom: "1px solid #eee",
-                }}
-              >
-                <span
-                  style={{
-                    textDecoration: item.completed ? "line-through" : "none",
-                    color: item.completed ? "#888" : "#000",
-                  }}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  placeholder="Хийх ажил..."
+                  value={newText}
+                  onChange={(e) => setNewText(e.target.value)}
+                  className="sm:col-span-3 w-full p-2.5 border rounded-xl bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <select
+                  value={newMember}
+                  onChange={(e) => setNewMember(e.target.value)}
+                  className="p-2.5 border rounded-xl bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
-                  <strong style={{ color: "#0070f3" }}>
-                    [{item.memberName}]
-                  </strong>
-                  : {item.choreName}{" "}
-                  <span style={{ color: "#ffa500" }}>({item.reward} ⭐)</span>
-                </span>
+                  {members.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={newStars}
+                  onChange={(e) => setNewStars(e.target.value)}
+                  className="p-2.5 border rounded-xl bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="1">⭐ 1 Од (Хялбар)</option>
+                  <option value="2">⭐⭐ 2 Од (Дунд)</option>
+                  <option value="3">⭐⭐⭐ 3 Од (Хүнд)</option>
+                </select>
                 <button
-                  onClick={() => completeChore(item.uniqueId)}
-                  disabled={item.completed}
-                  style={{
-                    padding: "5px 10px",
-                    background: item.completed ? "#d9d9d9" : "#52c41a",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: item.completed ? "not-allowed" : "pointer",
-                  }}
+                  type="submit"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm p-2.5 rounded-xl transition-all"
                 >
-                  {item.completed ? "Хийсэн ✓" : "Одон авах"}
+                  Ажил нэмэх
                 </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Түүх */}
-      {history.length > 0 && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>
-            📜 Сүүлийн үйлдэлүүд болон Сарын хаалт
-          </h3>
-          <div
-            style={{
-              maxHeight: "200px",
-              overflowY: "auto",
-              fontSize: "14px",
-              color: "#555",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {history.map((log, i) => (
-              <div
-                key={i}
-                style={{ padding: "5px 0", borderBottom: "1px dashed #eee" }}
-              >
-                {log}
               </div>
-            ))}
+            </form>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+              <div className="text-base font-bold text-slate-800 mb-2">
+                📋 Хийх ажлууд
+              </div>
+              {tasks.length === 0 ? (
+                <p className="text-center text-slate-400 py-4 text-sm">
+                  Одоогоор ажил байхгүй байна.
+                </p>
+              ) : (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => toggleTask(task.id)}
+                    className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer border transition-all ${
+                      task.done
+                        ? "bg-slate-50 border-slate-200 opacity-50"
+                        : "bg-white border-slate-100 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        readOnly
+                        className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      <span
+                        className={`text-sm font-medium text-slate-800 ${task.done ? "line-through text-slate-400" : ""}`}
+                      >
+                        {task.text}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600">
+                        {task.member}
+                      </span>
+                      <span className="text-xs font-black text-amber-500">
+                        {"⭐".repeat(task.stars)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
+            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              🏆 Шилдэг гишүүд
+            </h2>
+            <div className="space-y-4">
+              {leaderboard.map((user, index) => (
+                <div
+                  key={user.name}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 flex items-center justify-center font-bold text-sm rounded-full ${
+                        index === 0
+                          ? "bg-amber-400 text-white"
+                          : index === 1
+                            ? "bg-slate-300 text-slate-700"
+                            : index === 2
+                              ? "bg-amber-600 text-white"
+                              : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {user.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 font-bold text-amber-600 text-sm">
+                    <span>{user.stars}</span>
+                    <span>⭐</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
